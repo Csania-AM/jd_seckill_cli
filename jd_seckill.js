@@ -49,20 +49,29 @@ const jd_buy = async (config) => {
         console.log(chalk.green(`开始访问商品页面成功---------`));
         let itemName = await page.$eval("body > div:nth-child(10) > div > div.itemInfo-wrap > div.sku-name", (el) => el.innerText);
         // 数量变为2
-        await page.waitForFunction(() => {
-            document.querySelector("#buy-num").value = 2;
-            return true;
-        });
+        await page.waitForFunction(
+            () => {
+                document.querySelector("#buy-num").value = config.qinggou_num;
+            },
+            {},
+            config
+        );
         // 抢购
         await qianggou(page);
         console.log(chalk.green(`开始寻找按钮点击`));
         async function qianggou(page) {
             let searchQianggou = await page.$eval("#btn-reservation", (el) => el.innerText);
-            // let searchQianggou = await page.$eval("#InitCartUrl", (el) => el.innerText);
+            // let searchQianggou = await page.$eval(
+            //     "#InitCartUrl",
+            //     (el) => el.innerText
+            // );
             if (searchQianggou.indexOf("加入") >= 0) {
                 console.log(chalk.green(`寻找到了，开始抢购`));
+                // await Promise.all([
+                //     page.waitForNavigation(),
+                //     page.click("#InitCartUrl"),
+                // ]);
                 await Promise.all([page.waitForNavigation(), page.click("#btn-reservation")]);
-                // await Promise.all([page.waitForNavigation(), page.click("#InitCartUrl")]);
                 let addQianggouSuccess = await page.$eval("#result > div > div > div.success-lcol > div.success-top > h3", (el) => el.innerText);
                 if (addQianggouSuccess.indexOf("商品已成功加入购物车") >= 0) {
                     console.log(chalk.green(`${itemName}加入购物车成功`));
