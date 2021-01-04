@@ -48,83 +48,77 @@ const jd_buy = async (config) => {
         await page.goto(config.item_url, { waitUntil: "domcontentloaded" });
         console.log(chalk.green(`开始访问商品页面成功---------`));
         let itemName = await page.$eval("body > div:nth-child(10) > div > div.itemInfo-wrap > div.sku-name", (el) => el.innerText);
-        // 数量变为2
+
         await page.waitForFunction(
-            () => {
+            (config) => {
                 document.querySelector("#buy-num").value = config.qinggou_num;
+                return true;
             },
             {},
             config
         );
         // 抢购
         await qianggou(page);
-        console.log(chalk.green(`开始寻找按钮点击`));
         async function qianggou(page) {
+            console.log(chalk.red(`正在尝试寻找抢购按钮点击`));
             let searchQianggou = await page.$eval("#btn-reservation", (el) => el.innerText);
-            // let searchQianggou = await page.$eval(
-            //     "#InitCartUrl",
-            //     (el) => el.innerText
-            // );
-            if (searchQianggou.indexOf("加入") >= 0) {
+            if (searchQianggou.indexOf("抢购") >= 0) {
                 console.log(chalk.green(`寻找到了，开始抢购`));
-                // await Promise.all([
-                //     page.waitForNavigation(),
-                //     page.click("#InitCartUrl"),
-                // ]);
                 await Promise.all([page.waitForNavigation(), page.click("#btn-reservation")]);
                 let addQianggouSuccess = await page.$eval("#result > div > div > div.success-lcol > div.success-top > h3", (el) => el.innerText);
                 if (addQianggouSuccess.indexOf("商品已成功加入购物车") >= 0) {
                     console.log(chalk.green(`${itemName}加入购物车成功`));
 
                     await page.goto("https://trade.jd.com/shopping/order/getOrderInfo.action");
-                    const mima = config.password;
                     // 填入密码。提交订单
                     await page.waitForFunction(
-                        (mima) => {
-                            document.querySelector(".quark-pw-result-input").value = mima;
+                        (config) => {
+                            document.querySelector(".quark-pw-result-input").value = config.password;
                             const inputEvent = new Event("input");
                             document.querySelector(".quark-pw-result-input").dispatchEvent(inputEvent);
                             return true;
                         },
                         {},
-                        mima
+                        config
                     );
-                    await Promise.all([page.waitForNavigation(), page.click("#order-submit")]);
-                    try {
-                        let addDingdanSuccess = await page.$eval(
-                            "#indexBlurId > div > div.page-inner-wrap > div.index-content > div > div:nth-child(1) > div.order-info.float-clear > div.float-left.order-info-left.float-clear > div.float-left.order-info-left-detail > div.order-info-left-detail-item-title",
-                            (el) => el.innerText
-                        );
-                        if (addDingdanSuccess.indexOf("订单提交成功") >= 0) {
-                            console.log(chalk.green(`${addDingdanSuccess}`));
-                        } else {
-                            console.log(chalk.red(`订单提交失败`));
+                    setTimeout(() => {
+                        await Promise.all([page.waitForNavigation(), page.click("#order-submit")]);
+                        try {
+                            let addDingdanSuccess = await page.$eval(
+                                "#indexBlurId > div > div.page-inner-wrap > div.index-content > div > div:nth-child(1) > div.order-info.float-clear > div.float-left.order-info-left.float-clear > div.float-left.order-info-left-detail > div.order-info-left-detail-item-title",
+                                (el) => el.innerText
+                            );
+                            if (addDingdanSuccess.indexOf("订单提交成功") >= 0) {
+                                console.log(chalk.green(`${addDingdanSuccess}`));
+                            } else {
+                                console.log(chalk.red(`订单提交失败`));
+                            }
+                        } catch (error) {
+                            console.log(chalk.red(`----抢购商品没了。----`));
                         }
-                    } catch (error) {
-                        console.log(chalk.red(`----抢购商品没了。----`));
-                    }
+                    }, 100);
+
                 } else {
                     console.log(chalk.red(`${itemName}加入购物车失败`));
                 }
             } else {
                 // 抢购
-                console.log(chalk.red(`正在尝试寻找按钮点击`));
-
+                console.log(chalk.green(`没有寻找到按钮---------`));
                 console.log(chalk.green(`尝试刷新商品页面---------`));
-                page.setUserAgent(userAgent.random());
-                try {
-                    await page.goto(config.item_url, {
+                Promise.all([
+                    page.goto(config.item_url, {
                         waitUntil: "domcontentloaded",
-                    });
-                } catch (error) {
-                    console.log(chalk.green(`尝试刷新商品页面失败---------`));
-                    await page.goto(config.item_url, {
-                        waitUntil: "domcontentloaded",
-                    });
-                }
-                await page.type("#buy-num", "2");
+                    }),
+                    page.waitForFunction(
+                        (config) => {
+                            document.querySelector("#buy-num").value = config.qinggou_num;
+                            return true;
+                        },
+                        {},
+                        config
+                    ),
+                ]);
                 console.log(chalk.green(`尝试刷新商品页面成功---------`));
-
                 await qianggou(page);
             }
         }
