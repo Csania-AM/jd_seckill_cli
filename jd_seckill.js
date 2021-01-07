@@ -3,7 +3,7 @@ const userAgent = require("./utils/user_agents");
 const { addCookies } = require("./utils/util");
 const chalk = require("chalk");
 const jd_buy = async (config) => {
-    let browser;
+    let browser, qianggou;
     try {
         browser = await puppeteer.launch({
             headless: false,
@@ -44,22 +44,20 @@ const jd_buy = async (config) => {
             page.setUserAgent(userAgent.random()),
             page.setJavaScriptEnabled(true), //  允许执行 js 脚本
         ]);
-        console.log(chalk.green(`开始访问商品页面---------`));
-        await page.goto(config.item_url, { waitUntil: "domcontentloaded" });
-        console.log(chalk.green(`开始访问商品页面成功---------`));
-        let itemName = await page.$eval("body > div:nth-child(10) > div > div.itemInfo-wrap > div.sku-name", (el) => el.innerText);
+        qianggou = async (page) => {
+            console.log(chalk.green(`开始访问商品页面---------`));
+            await page.goto(config.item_url, { waitUntil: "domcontentloaded" });
+            console.log(chalk.green(`开始访问商品页面成功---------`));
+            let itemName = await page.$eval("body > div:nth-child(10) > div > div.itemInfo-wrap > div.sku-name", (el) => el.innerText);
 
-        await page.waitForFunction(
-            (config) => {
-                document.querySelector("#buy-num").value = config.qinggou_num;
-                return true;
-            },
-            {},
-            config
-        );
-        // 抢购
-        await qianggou(page);
-        async function qianggou(page) {
+            await page.waitForFunction(
+                (config) => {
+                    document.querySelector("#buy-num").value = config.qinggou_num;
+                    return true;
+                },
+                {},
+                config
+            );
             console.log(chalk.red(`正在尝试寻找抢购按钮点击`));
             let searchQianggou = await page.$eval("#btn-reservation", (el) => el.innerText);
             if (searchQianggou.indexOf("抢购") >= 0) {
@@ -81,7 +79,7 @@ const jd_buy = async (config) => {
                         {},
                         config
                     );
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         await Promise.all([page.waitForNavigation(), page.click("#order-submit")]);
                         try {
                             let addDingdanSuccess = await page.$eval(
@@ -92,40 +90,29 @@ const jd_buy = async (config) => {
                                 console.log(chalk.green(`${addDingdanSuccess}`));
                             } else {
                                 console.log(chalk.red(`订单提交失败`));
+                                await browser.close();
                             }
                         } catch (error) {
                             console.log(chalk.red(`----抢购商品没了。----`));
+                            await browser.close();
                         }
                     }, 100);
-
                 } else {
                     console.log(chalk.red(`${itemName}加入购物车失败`));
                 }
             } else {
                 // 抢购
                 console.log(chalk.green(`没有寻找到按钮---------`));
-                console.log(chalk.green(`尝试刷新商品页面---------`));
-                Promise.all([
-                    page.goto(config.item_url, {
-                        waitUntil: "domcontentloaded",
-                    }),
-                    page.waitForFunction(
-                        (config) => {
-                            document.querySelector("#buy-num").value = config.qinggou_num;
-                            return true;
-                        },
-                        {},
-                        config
-                    ),
-                ]);
-                console.log(chalk.green(`尝试刷新商品页面成功---------`));
                 await qianggou(page);
             }
-        }
+        };
+        // 抢购
+        await qianggou(page);
     } catch (error) {
         console.log(error);
         console.log(chalk.red(`订单提交失败`));
-        await browser.close();
+        // 抢购
+        await qianggou(page);
     }
 };
 
