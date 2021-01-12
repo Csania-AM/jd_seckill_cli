@@ -46,7 +46,7 @@ const jd_buy = async (config) => {
         ]);
         qianggou = async (page) => {
             console.log(chalk.green(`开始访问商品页面---------`));
-            await page.goto(config.item_url, { waitUntil: "domcontentloaded" });
+            await page.goto(config.item_url, { waitUntil: "networkidle0" });
             console.log(chalk.green(`开始访问商品页面成功---------`));
             let itemName = await page.$eval("body > div:nth-child(10) > div > div.itemInfo-wrap > div.sku-name", (el) => el.innerText);
 
